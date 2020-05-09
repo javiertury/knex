@@ -360,6 +360,23 @@ module.exports = function (knex) {
         });
     });
 
+    it('rejects promise when commit fails', async () => {
+      if (!['pg', 'mysql'].includes(knex.client.driverName)) {
+        return Promise.resolve();
+      }
+      const trxProvider = knex.transactionProvider();
+      const trx = await trxProvider();
+
+      await trx.raw('CREATE TABLE foo (id INTEGER PRIMARY KEY);');
+      await trx.raw(
+        'CREATE TABLE bar (id INTEGER PRIMARY KEY REFERENCES foo(id) DEFERRABLE INITIALLY DEFERRED);'
+      );
+
+      await trx.insert({ id: 1 }).into('bar');
+
+      await expect(trx.commit()).to.be.rejected;
+    });
+
     it('does not reject promise when rolling back a transaction', async () => {
       const trxProvider = knex.transactionProvider();
       const trx = await trxProvider();
